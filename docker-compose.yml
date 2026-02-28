@@ -1,0 +1,10 @@
+services:
+  api:
+    build: .
+    container_name: employee-search-api
+    environment:
+      - APP_DB_PATH=/app/data/app.db
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
