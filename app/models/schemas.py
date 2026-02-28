@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.settings import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -37,8 +35,18 @@ class SearchMeta(BaseModel):
     count: int
 
 
+class EmployeeItem(BaseModel):
+    id: int | None = None
+    name: str | None = None
+    email: str | None = None
+    department: str | None = None
+    location: str | None = None
+    position: str | None = None
+    phone: str | None = None
+
+
 class SearchResponse(BaseModel):
-    items: list[dict[str, Any]]
+    items: list[EmployeeItem]
     next_cursor: str | None
     applied_columns: list[str]
     meta: SearchMeta

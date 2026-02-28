@@ -32,9 +32,11 @@ This submission interprets that as:
 
 ## 3. Architecture decisions
 - Layered architecture: API -> Service -> Repository -> SQLite.
+- Request-scoped DB connection via FastAPI dependency (open per request, close in `finally`).
 - Repository always enforces `organization_id` predicate.
 - Response projection is built from `allowed_fields ∩ org_config`.
 - Keyset pagination uses `id > cursor` and `ORDER BY id ASC`.
+- Search endpoint remains sync (`def`) because `sqlite3` is sync I/O.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
 
@@ -47,7 +49,6 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
 
 ### Optional headers
 - `X-User-Id`
-- `X-Forwarded-For`
 
 ### Query params
 - `q` (keyword on name/email)
@@ -86,11 +87,24 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
 - Key format: `{org_id}:{user_id_or_anon}:{client_ip}`.
 - Default policy: `60 requests / 60 seconds`.
 - Thread-safe via `threading.Lock`.
+- Memory safeguards:
+  - periodic cleanup of expired keys,
+  - `max_tracked_keys` cap to prevent unbounded growth under key-cardinality abuse.
 
 Limitation:
 - Per-process memory only (not distributed across replicas).
 
-## 8. Run locally
+## 8. Runtime configuration (env vars)
+- `APP_DB_PATH`: SQLite file path (default: `data/app.db`).
+- `APP_SEED_DATA`: seed sample data on startup (`true`/`false`, default: `true`).
+- `RATE_LIMIT_MAX_TRACKED_KEYS`: max in-memory key entries (default: `200000`).
+- `RATE_LIMIT_CLEANUP_INTERVAL_SECONDS`: cleanup interval for expired keys (default: `30`).
+
+OpenAPI note:
+- `items` is documented as a typed `EmployeeItem` model with optional fields.
+- Response uses `response_model_exclude_none=True`, so only configured columns are returned.
+
+## 9. Run locally
 ```bash
 python -m venv .venv
 source .venv/bin/activate
@@ -102,25 +116,25 @@ OpenAPI docs:
 - [http://localhost:8000/docs](http://localhost:8000/docs)
 - [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
 
-## 9. Run with Docker
+## 10. Run with Docker
 ```bash
 docker compose up --build
 ```
 
-## 10. Run tests
+## 11. Run tests
 ```bash
 pip install -r requirements-dev.txt
 pytest -q
 ```
 
-## 11. Sample curl
+## 12. Sample curl
 ```bash
 curl -s 'http://localhost:8000/api/v1/employees/search?page_size=2' \
   -H 'X-Org-Id: org_1' \
   -H 'X-User-Id: reviewer_1'
 ```
 
-## 12. Production migration notes (not implemented)
+## 13. Production migration notes (not implemented)
 - Replace SQLite with PostgreSQL.
 - Move rate limiting to Redis for distributed consistency.
 - Add observability (structured logs, metrics, traces).

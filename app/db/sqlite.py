@@ -1,5 +1,8 @@
 import sqlite3
 from pathlib import Path
+from typing import Iterator
+
+from fastapi import Request
 
 SCHEMA_STATEMENTS = [
     """
@@ -31,9 +34,21 @@ SCHEMA_STATEMENTS = [
 
 
 def get_connection(db_path: str) -> sqlite3.Connection:
-    connection = sqlite3.connect(db_path, check_same_thread=False)
+    connection = sqlite3.connect(db_path, check_same_thread=True)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def get_db(request: Request) -> Iterator[sqlite3.Connection]:
+    db_path = getattr(request.app.state, "db_path", None)
+    if not db_path:
+        raise RuntimeError("Database path is not initialized")
+
+    connection = get_connection(db_path)
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
 def init_db(db_path: str) -> None:

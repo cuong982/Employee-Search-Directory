@@ -1,3 +1,5 @@
+import sqlite3
+
 from app.core.settings import ALLOWED_OUTPUT_FIELDS, DEFAULT_VISIBLE_COLUMNS
 from app.models.schemas import EmployeeSearchRequest, SearchMeta, SearchResponse
 from app.repositories.config_repository import ColumnConfigRepository
@@ -17,9 +19,13 @@ class SearchService:
         self,
         organization_id: str,
         request: EmployeeSearchRequest,
+        connection: sqlite3.Connection,
     ) -> SearchResponse:
         parsed_cursor = self._parse_cursor(request.cursor)
-        configured_columns = self.config_repository.get_columns_for_org(organization_id)
+        configured_columns = self.config_repository.get_columns_for_org(
+            connection=connection,
+            organization_id=organization_id,
+        )
 
         effective_columns = [
             column for column in configured_columns if column in ALLOWED_OUTPUT_FIELDS
@@ -28,6 +34,7 @@ class SearchService:
             effective_columns = list(DEFAULT_VISIBLE_COLUMNS)
 
         rows, next_cursor = self.employee_repository.search(
+            connection=connection,
             organization_id=organization_id,
             filters=request,
             projected_columns=effective_columns,
