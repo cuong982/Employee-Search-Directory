@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.search import router as search_router
+from app.core.logging_config import configure_app_logging
 from app.core.rate_limiter import FixedWindowRateLimiter
 from app.core.settings import (
     APP_SEED_DATA,
@@ -11,6 +12,7 @@ from app.core.settings import (
     API_VERSION,
     DEFAULT_RATE_LIMIT,
     DEFAULT_RATE_WINDOW_SECONDS,
+    LOG_LEVEL,
     RATE_LIMIT_CLEANUP_INTERVAL_SECONDS,
     RATE_LIMIT_MAX_TRACKED_KEYS,
     resolve_db_path,
@@ -34,6 +36,8 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        configure_app_logging(LOG_LEVEL)
+
         app.state.db_path = resolved_db_path
         init_db(resolved_db_path)
         if seed:

@@ -1,6 +1,10 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DB_PATH = BASE_DIR / "data" / "app.db"
 
@@ -19,8 +23,6 @@ ALLOWED_OUTPUT_FIELDS = [
     "position",
     "phone",
 ]
-DEFAULT_VISIBLE_COLUMNS = ["name", "email", "department", "location"]
-
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 
@@ -48,6 +50,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 APP_SEED_DATA = _env_bool("APP_SEED_DATA", True)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 RATE_LIMIT_MAX_TRACKED_KEYS = max(
     1, _env_int("RATE_LIMIT_MAX_TRACKED_KEYS", DEFAULT_RATE_LIMIT_MAX_TRACKED_KEYS)
 )

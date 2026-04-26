@@ -1,6 +1,6 @@
 import sqlite3
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 
 from app.db.sqlite import get_db
 from app.models.schemas import EmployeeSearchRequest, SearchResponse
@@ -22,6 +22,7 @@ def get_org_id(x_org_id: str = Header(..., alias="X-Org-Id")) -> str:
 )
 def search_employees(
     request: Request,
+    response: Response,
     db: sqlite3.Connection = Depends(get_db),
     org_id: str = Depends(get_org_id),
     q: str | None = Query(default=None),
@@ -37,12 +38,16 @@ def search_employees(
 
     limiter = request.app.state.rate_limiter
     key = f"{org_id}:{user_id}:{client_ip}"
-    allowed, retry_after = limiter.allow(key)
+    allowed, retry_after, remaining = limiter.allow(key)
     if not allowed:
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded",
-            headers={"Retry-After": str(retry_after)},
+            headers={
+                "Retry-After": str(retry_after),
+                "X-RateLimit-Limit": str(limiter.limit),
+                "X-RateLimit-Remaining": "0",
+            },
         )
 
     payload = EmployeeSearchRequest(
@@ -56,6 +61,10 @@ def search_employees(
 
     service = request.app.state.search_service
     try:
-        return service.search(org_id, payload, db)
+        result = service.search(org_id, payload, db)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    response.headers["X-RateLimit-Limit"] = str(limiter.limit)
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    return result

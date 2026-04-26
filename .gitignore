@@ -7,3 +7,6 @@ __pycache__/
 .DS_Store
 data/*.db
 .doc
+.env
+.idea/
+.vscode/

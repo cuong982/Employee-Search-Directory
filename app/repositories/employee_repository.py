@@ -1,7 +1,9 @@
+import logging
 import sqlite3
 
-from app.core.settings import ALLOWED_OUTPUT_FIELDS
 from app.models.schemas import SearchFilters
+
+logger = logging.getLogger(__name__)
 
 
 class EmployeeRepository:
@@ -14,11 +16,7 @@ class EmployeeRepository:
         page_size: int,
         cursor: int | None,
     ) -> tuple[list[dict[str, object]], str | None]:
-        safe_columns = [
-            column for column in projected_columns if column in ALLOWED_OUTPUT_FIELDS
-        ]
-        if not safe_columns:
-            safe_columns = ["name"]
+        safe_columns = projected_columns if projected_columns else ["name"]
 
         select_columns = ["id"] + [column for column in safe_columns if column != "id"]
 
@@ -32,8 +30,11 @@ class EmployeeRepository:
         }
 
         if filters.q:
-            query_parts.append("AND (name LIKE :keyword OR email LIKE :keyword)")
-            params["keyword"] = f"%{filters.q}%"
+            query_parts.append(
+                "AND (name LIKE :keyword ESCAPE '\\' OR email LIKE :keyword ESCAPE '\\')"
+            )
+            escaped = filters.q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params["keyword"] = f"%{escaped}%"
         if filters.department:
             query_parts.append("AND department = :department")
             params["department"] = filters.department
@@ -53,6 +54,16 @@ class EmployeeRepository:
         query = "\n".join(query_parts)
 
         db_cursor = connection.cursor()
+
+        if logger.isEnabledFor(logging.DEBUG):
+            db_cursor.execute(f"EXPLAIN QUERY PLAN {query}", params)
+            plan_rows = db_cursor.fetchall()
+            plan_lines = " | ".join(
+                f"[{r['id']},{r['parent']},{r['notused']}] {r['detail']}"
+                for r in plan_rows
+            )
+            logger.debug("EXPLAIN QUERY PLAN org=%s: %s", organization_id, plan_lines)
+
         db_cursor.execute(query, params)
         rows = db_cursor.fetchall()
 

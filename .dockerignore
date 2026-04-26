@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Tests (not needed in production image)
+tests/
+pytest.ini
+Dockerfile.test
+
+# Environment & secrets
+.env
+
+# Data (mounted as volume at runtime)
+data/
+
+# Docs & tooling
+.doc/
+.git/
+.gitignore
+.idea/
+.vscode/
+README.md
+ARCHITECTURE.md

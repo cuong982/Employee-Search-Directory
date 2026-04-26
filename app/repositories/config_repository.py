@@ -1,13 +1,15 @@
 import json
+import logging
 import sqlite3
 
-from app.core.settings import DEFAULT_VISIBLE_COLUMNS
+logger = logging.getLogger(__name__)
 
 
 class ColumnConfigRepository:
     def get_columns_for_org(
         self, connection: sqlite3.Connection, organization_id: str
     ) -> list[str]:
+        """Return configured columns for org. Returns [] if org has no config or config is invalid."""
         cursor = connection.cursor()
         cursor.execute(
             """
@@ -20,14 +22,20 @@ class ColumnConfigRepository:
         )
         row = cursor.fetchone()
         if not row:
-            return list(DEFAULT_VISIBLE_COLUMNS)
+            return []
 
         try:
             columns = json.loads(row["columns_json"])
         except json.JSONDecodeError:
-            return list(DEFAULT_VISIBLE_COLUMNS)
+            logger.warning("Invalid columns_json for org=%s", organization_id)
+            return []
 
         if not isinstance(columns, list):
-            return list(DEFAULT_VISIBLE_COLUMNS)
+            logger.warning("columns_json is not a list for org=%s", organization_id)
+            return []
 
-        return [column for column in columns if isinstance(column, str)]
+        valid = [column for column in columns if isinstance(column, str)]
+        if not valid:
+            return []
+
+        return valid

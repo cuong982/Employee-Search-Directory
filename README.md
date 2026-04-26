@@ -90,6 +90,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
 - Memory safeguards:
   - periodic cleanup of expired keys,
   - `max_tracked_keys` cap to prevent unbounded growth under key-cardinality abuse.
+- Response headers on every successful response: `X-RateLimit-Limit`, `X-RateLimit-Remaining`.
+- Response headers on 429: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining: 0`.
 
 Limitation:
 - Per-process memory only (not distributed across replicas).
@@ -123,8 +125,13 @@ docker compose up --build
 
 ## 11. Run tests
 ```bash
+# Option 1: local venv
 pip install -r requirements-dev.txt
 pytest -q
+
+# Option 2: Docker (no local Python required)
+docker run --rm -v "$(pwd)":/app -w /app python:3.12-slim \
+  sh -c "pip install -q -r requirements-dev.txt && pytest -q"
 ```
 
 ## 12. Sample curl

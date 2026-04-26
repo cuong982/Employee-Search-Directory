@@ -149,6 +149,20 @@ def test_rate_limit_ignores_spoofed_forwarded_for(tmp_path) -> None:
         assert response_3.status_code == 429
 
 
+def test_unknown_org_returns_empty_items(tmp_path) -> None:
+    with _build_client(tmp_path) as client:
+        response = client.get(
+            "/api/v1/employees/search",
+            headers={"X-Org-Id": "org_unknown"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["items"] == []
+        assert payload["applied_columns"] == []
+        assert payload["meta"]["count"] == 0
+
+
 def test_openapi_endpoint_is_available(tmp_path) -> None:
     with _build_client(tmp_path) as client:
         response = client.get("/openapi.json")

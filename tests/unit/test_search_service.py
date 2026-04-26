@@ -21,7 +21,7 @@ def search_service(tmp_path):
     return service, db_path
 
 
-def test_search_service_applies_org_columns_and_hides_phone(search_service: SearchService) -> None:
+def test_search_service_applies_org_columns_and_hides_phone(search_service: tuple[SearchService, str]) -> None:
     service, db_path = search_service
     connection = get_connection(db_path)
     try:
@@ -47,7 +47,25 @@ def test_search_service_applies_org_columns_and_hides_phone(search_service: Sear
         assert "phone" not in projected
 
 
-def test_search_service_rejects_invalid_cursor(search_service: SearchService) -> None:
+def test_search_service_returns_empty_for_unconfigured_org(search_service: tuple[SearchService, str]) -> None:
+    service, db_path = search_service
+    connection = get_connection(db_path)
+    try:
+        response = service.search(
+            "org_unknown",
+            EmployeeSearchRequest(page_size=10),
+            connection,
+        )
+    finally:
+        connection.close()
+
+    assert response.items == []
+    assert response.applied_columns == []
+    assert response.meta.count == 0
+    assert response.next_cursor is None
+
+
+def test_search_service_rejects_invalid_cursor(search_service: tuple[SearchService, str]) -> None:
     service, db_path = search_service
     connection = get_connection(db_path)
     try:
